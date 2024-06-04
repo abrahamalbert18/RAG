@@ -1,4 +1,4 @@
-# RAG (Retreival Augmented Generation)
+# RAG (Retrieval Augmented Generation)
 
 This repository is purely created for practicing building a RAG pipeline 
 from scratch.

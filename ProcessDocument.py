@@ -24,7 +24,7 @@ metaData, numberOfPages = extractMetaData()
 documentContent = []
 for page in range(numberOfPages - 1):
     pageContent = loadDocument(pageNumber=page)
-    pageContent = pageContent.replace("-", "")
+    pageContent = pageContent.replace("- ", "")
     pageContent = pageContent.replace("\n", " ").split(". ")
     documentContent += pageContent
 
@@ -42,7 +42,7 @@ tokenizer = AutoTokenizer.from_pretrained('efederici/sentence-bert-base')
 model = AutoModel.from_pretrained('efederici/sentence-bert-base')
 
 # Tokenize sentences
-encodedInput = tokenizer(documentContent[:], padding=True, truncation=True,
+encodedInput = tokenizer(documentContent, padding=True, truncation=True,
                          return_tensors='pt')
 device = "mps"
 if torch.cuda.is_available():
@@ -81,4 +81,6 @@ print("Similar sentences:")
 print(f"Query : {query}")
 topKIndices = topKResults.indices.tolist()
 for i in topKIndices:
+    print(f"i = {i}")
     print(documentContent[i])
+    print()
