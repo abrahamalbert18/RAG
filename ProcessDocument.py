@@ -37,47 +37,48 @@ def mean_pooling(model_output, attention_mask):
     input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
     return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
-
-# Sentences we want sentence embeddings for
-# sentences = ["Questo è un esempio di frase", "Questo è un ulteriore esempio"]
-
 # Load model from HuggingFace Hub
 tokenizer = AutoTokenizer.from_pretrained('efederici/sentence-bert-base')
 model = AutoModel.from_pretrained('efederici/sentence-bert-base')
 
 # Tokenize sentences
-encoded_input = tokenizer(documentContent[:5], padding=True, truncation=True,
-                          return_tensors='pt')
+encodedInput = tokenizer(documentContent[:], padding=True, truncation=True,
+                         return_tensors='pt')
+device = "mps"
+if torch.cuda.is_available():
+    device = "cuda"
 
+model.to(device)
 # Compute token embeddings
 with torch.no_grad():
-    model_output = model(**encoded_input)
+    encodedInput = encodedInput.to(device)
+    modelOutput = model(**encodedInput)
 
 # Perform pooling. In this case, mean pooling.
-sentence_embeddings = mean_pooling(model_output, encoded_input['attention_mask'])
+sentenceEmbeddings = mean_pooling(modelOutput, encodedInput['attention_mask'])
 
 print("Sentence embeddings:")
-print(sentence_embeddings)
-print(sentence_embeddings.shape)
+# print(sentenceEmbeddings)
+print(sentenceEmbeddings.shape)
 
 query = "Chameleon"
 
 # Tokenize sentences
 encodedQuery = tokenizer(query, padding=True, truncation=True,
                           return_tensors='pt')
+encodedQuery = encodedQuery.to(device)
 # Compute token embeddings
 with torch.no_grad():
     modelOutput = model(**encodedQuery)
 
 queryEmbedding = mean_pooling(modelOutput, encodedQuery['attention_mask'])
 
-similarities = torch.cosine_similarity(queryEmbedding, sentence_embeddings, dim=1)
-top2Results = torch.topk(similarities, k=2)
-print(similarities)
-print(top2Results)
+similarities = torch.cosine_similarity(queryEmbedding, sentenceEmbeddings, dim=1)
+topKResults = torch.topk(similarities, k=5)
+print(topKResults)
 
 print("Similar sentences:")
 print(f"Query : {query}")
-top2Indices = top2Results.indices.tolist()
-for i in top2Indices:
+topKIndices = topKResults.indices.tolist()
+for i in topKIndices:
     print(documentContent[i])
