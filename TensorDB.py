@@ -94,6 +94,7 @@ class TensorDB(TransformerModel):
         self.documentName = documentName
         self.metadata, self.numberOfPages = self.extractMetaData()
         self.document = None
+        self.sentenceEmbeddings = None
         self.createDocumentDataFrame()
         pass
 
@@ -118,32 +119,49 @@ class TensorDB(TransformerModel):
             pageNumbers += [page + 1] * len(pageContent)
         return documentContent, pageNumbers
 
-    def createDocumentDataFrame(self):
-        documentContent, pageNumbers = self.loadDocumentContent()
-        self.document = pd.DataFrame({"pageNumber" : pageNumbers,
-                        "line" : documentContent})
-        self.update()
+    def createDocumentDataFrame(self, filename="Chameleon"):
+        file = f"{filename}/documentData"
+        if not os.path.exists(file):
+            documentContent, pageNumbers = self.loadDocumentContent()
+            self.document = pd.DataFrame({"pageNumber" : pageNumbers,
+                            "line" : documentContent})
+            self.update()
+            self.saveParquet()
+        else:
+            self.loadEmbeddings()
+            self.loadDocumentContent()
         pass
 
-    def saveDocument(self, path="./DocumentDatabases",
-                     filename="Chameleon"):
-        assert "embeddings" in self.document.columns
-        self.document.to_parquet(f"{filename}")
+    def saveParquet(self, filename="Chameleon"):
+        # assert "embeddings" in self.document.columns
+        self.document.to_parquet(f"{filename}/documentParquetData.gzip",
+                                 index=False)
         pass
 
+    def loadParquet(self, filename="Chameleon"):
+        self.document = pd.read_parquet(f"{filename}/documentParquetData.gzip",
+                                 index=False)
+        pass
     def update(self, dirName="Chameleon"):
-        lines = self.document["line"].tolist()
-        encodedLines = self.encodeDocument(lines)
-        embeddedLines = self.computeSentenceEmbeddings(encodedLines)
-
-        if not os.path.exists(dirName):
-           os.mkdir(dirName)
         filePath = f"{dirName}/embeddings.pth.tar"
-        torch.save(embeddedLines, filePath)
-        self.document["embeddings"] = filePath
+        if not os.path.exists(filePath):
+            lines = self.document["line"].tolist()
+            encodedLines = self.encodeDocument(lines)
+            embeddedLines = self.computeSentenceEmbeddings(encodedLines)
+
+            if not os.path.exists(dirName):
+               os.mkdir(dirName)
+
+            torch.save(embeddedLines, filePath)
+            self.document["embeddings"] = filePath
+        else:
+            self.loadEmbeddings()
         pass
 
-    def add(self, documentTensor):
+    def loadEmbeddings(self, dirName="Chameleon"):
+        filePath = f"{dirName}/embeddings.pth.tar"
+        embeddedLines = torch.load(filePath)
+        self.sentenceEmbeddings = embeddedLines
         pass
 
     def reset(self):
@@ -154,3 +172,4 @@ class TensorDB(TransformerModel):
 if __name__ == '__main__':
     data = TensorDB(documentName="2405.09818v1.pdf")
     print(data.document)
+    print()
