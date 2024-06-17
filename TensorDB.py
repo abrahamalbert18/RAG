@@ -44,7 +44,9 @@ class TransformerModel:
                                   truncation=True, return_tensors='pt')
         return encodedDocument
 
-    def encodeAndEmbedQuery(self, query=""):
+    def encodeAndEmbedQuery(self, query=None):
+        if query == None:
+            query = input("Please enter your input query : ")
         self.query = query
         # Tokenize sentences
         encodedQuery = self.tokenizer(query, padding=True, truncation=True,
@@ -76,6 +78,7 @@ class TransformerModel:
                                                documentEmbeddings, dim=1)
         topKResults = torch.topk(similarities, k=k)
         # print(topKResults)
+        self.topKResults = topKResults
         return topKResults
 
     def printResults(self, documentContent=None):
@@ -164,9 +167,18 @@ class TensorDB(TransformerModel):
         self.sentenceEmbeddings = embeddedLines
         pass
 
+    def semanticSearch(self):
+        queryEmbeddings = self.encodeAndEmbedQuery()
+        self.computeSimilarities(queryEmbeddings, self.sentenceEmbeddings)
+        top5 = self.document.iloc[self.topKResults.indices.tolist()]
+        top5["score"] = self.topKResults.values.tolist()
+        top5["score"] = top5["score"].apply(lambda x: round(100 * x, 2))
+        print(top5)
+        pass
     def reset(self):
         self.document = None
         pass
+
 
 
 if __name__ == '__main__':
